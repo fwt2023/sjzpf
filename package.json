@@ -1,0 +1,6 @@
+{
+  "name": "skin-calendar",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
