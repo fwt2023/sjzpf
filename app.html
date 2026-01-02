@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>皮肤交易日历</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body x-data="app()" x-init="init()">
+    <!-- 移动端导航 -->
+    <nav class="mobile-nav">
+        <div class="nav-brand">📅 皮肤交易</div>
+        <button class="nav-toggle" @click="sidebarOpen = !sidebarOpen">☰</button>
+    </nav>
+    
+    <!-- 侧边栏 -->
+    <aside class="sidebar" :class="{ 'active': sidebarOpen }">
+        <div class="sidebar-header">
+            <h1>📅 皮肤交易日历</h1>
+            <p>智能管理 轻松赚钱</p>
+        </div>
+        
+        <div class="sidebar-stats">
+            <div class="stat-item">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <div class="stat-value" x-text="accounts.length"></div>
+                    <div class="stat-label">账号数</div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" x-text="'¥' + totalProfit"></div>
+                    <div class="stat-label">总利润</div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <div class="stat-value" x-text="todayTasksCount"></div>
+                    <div class="stat-label">今日任务</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-actions">
+            <button class="action-btn primary" @click="openAddModal()">
+                ➕ 添加账号
+            </button>
+            <button class="action-btn secondary" @click="openAutoScheduleModal()">
+                🤖 自动排期
+            </button>
+            <button class="action-btn" @click="openSettingsModal()">
+                ⚙️ 设置
+            </button>
+            <button class="action-btn danger" @click="confirmDeleteAll()" x-show="accounts.length > 0">
+                🗑️ 全部删除
+            </button>
+        </div>
+    </aside>
+    
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 今日任务 -->
+        <section class="today-section">
+            <div class="section-header">
+                <h2>🎯 今日任务</h2>
+                <span class="today-date" x-text="todayDate"></span>
+            </div>
+            <div class="tasks-grid">
+                <template x-if="todayTasks.length === 0">
+                    <div class="empty-state">
+                        <div class="empty-icon">🎉</div>
+                        <div class="empty-text">今天没有任务，好好休息一下吧！</div>
+                    </div>
+                </template>
+                
+                <template x-for="task in todayTasks" :key="task.id">
+                    <div class="task-card" :class="{ 'completed': completedTasks[task.id] }">
+                        <div class="task-header">
+                            <div>
+                                <div class="task-title">
+                                    <span class="task-icon" x-text="task.icon"></span>
+                                    <span x-text="task.account"></span>
+                                    <span class="task-badge" :class="'badge-' + task.priority" x-text="task.priority === 'high' ? '重要' : '中等'"></span>
+                                </div>
+                                <div x-show="task.dayNum" class="task-progress" x-text="'进度：第' + task.dayNum + '/' + task.totalDays + '天'"></div>
+                            </div>
+                            <button class="task-complete-btn" 
+                                    :class="{ 'completed': completedTasks[task.id] }"
+                                    @click="toggleTaskComplete(task.id)"
+                                    x-text="completedTasks[task.id] ? '✓ 已完成' : '标记完成'">
+                            </button>
+                        </div>
+                        
+                        <div class="task-description">
+                            <strong x-text="task.title"></strong><br>
+                            <span x-text="task.description"></span>
+                        </div>
+                        
+                        <div class="task-steps">
+                            <strong style="color: var(--primary);">📝 操作步骤：</strong>
+                            <template x-for="step in task.steps">
+                                <div class="task-step" x-text="step"></div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+        
+        <!-- 账号列表 -->
+        <section class="accounts-section" x-show="accounts.length > 0">
+            <div class="section-header">
+                <h2>📋 我的账号</h2>
+            </div>
+            
+            <template x-if="activeAccounts.length > 0">
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 class="section-subtitle">进行中 (<span x-text="activeAccounts.length"></span>)</h3>
+                    <div class="accounts-grid">
+                        <template x-for="account in activeAccounts" :key="account.id">
+                            <div class="account-card" :class="{ 'highlight': isGiftDay(account) }">
+                                <div class="account-info">
+                                    <div class="account-name">
+                                        <span x-text="account.name"></span>
+                                        <span x-show="isGiftDay(account)" class="badge-danger">🎁 今天赠送</span>
+                                        <span x-show="isPastGiftDay(account)" class="badge-warning">⚠️ 已过期</span>
+                                    </div>
+                                    <div class="account-dates" x-text="formatAccountDates(account)"></div>
+                                </div>
+                                <div class="account-actions">
+                                    <span class="profit-badge" x-text="'预计 ¥' + account.profit"></span>
+                                    <button class="btn-icon" @click="toggleAccountStatus(account.id)" title="标记为已完成">✓</button>
+                                    <button class="btn-icon" @click="openEditModal(account)" title="编辑">✏️</button>
+                                    <button class="btn-icon" @click="confirmDelete(account.id)" title="删除">🗑️</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            
+            <template x-if="completedAccounts.length > 0">
+                <div>
+                    <h3 class="section-subtitle">已完成 (<span x-text="completedAccounts.length"></span>)</h3>
+                    <div class="accounts-grid">
+                        <template x-for="account in completedAccounts" :key="account.id">
+                            <div class="account-card account-completed">
+                                <div class="account-info">
+                                    <div class="account-name">
+                                        <span x-text="account.name"></span>
+                                        <span style="color: var(--success); margin-left: 0.5rem;">✓</span>
+                                    </div>
+                                    <div class="account-dates" x-text="formatAccountDates(account)"></div>
+                                </div>
+                                <div class="account-actions">
+                                    <span class="profit-badge completed" x-text="'已获利 ¥' + account.profit"></span>
+                                    <button class="btn-icon" @click="toggleAccountStatus(account.id)" title="取消完成">↩️</button>
+                                    <button class="btn-icon" @click="openEditModal(account)" title="编辑">✏️</button>
+                                    <button class="btn-icon" @click="confirmDelete(account.id)" title="删除">🗑️</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </section>
+        
+        <!-- 日历视图 -->
+        <section class="calendar-section">
+            <div class="section-header">
+                <h2>📆 日历视图</h2>
+                <select x-model="displayDays" class="select-days">
+                    <option value="7">7天</option>
+                    <option value="14">14天</option>
+                    <option value="30">30天</option>
+                </select>
+            </div>
+            <div class="calendar-grid">
+                <template x-for="day in calendarDays" :key="day.date">
+                    <div class="day-card">
+                        <div class="day-header">
+                            <div>
+                                <div class="day-date" x-text="day.date"></div>
+                                <div class="day-weekday" x-text="day.weekday"></div>
+                            </div>
+                            <span x-show="day.isToday" class="today-badge">今天</span>
+                        </div>
+                        <div class="day-tasks">
+                            <template x-if="day.tasks.length === 0">
+                                <div class="no-tasks">无任务</div>
+                            </template>
+                            <template x-for="task in day.tasks">
+                                <div class="day-task" :class="task.type">
+                                    <span x-text="task.icon"></span>
+                                    <span x-text="task.text"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+    </main>
+    
+    <!-- 添加账号模态框 -->
+    <div x-show="modals.add" class="modal-overlay" @click.self="modals.add = false">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>➕ 添加账号</h3>
+                <button class="modal-close" @click="modals.add = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>账号名称</label>
+                    <input type="text" x-model="form.name" placeholder="例如：账号1">
+                </div>
+                <div class="form-group">
+                    <label>开始买皮肤日期</label>
+                    <input type="date" x-model="form.startDate">
+                </div>
+                <div class="form-group">
+                    <label>预计利润（元）</label>
+                    <input type="number" x-model="form.profit" placeholder="500">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.add = false">取消</button>
+                <button class="btn-primary" @click="addAccount()">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑账号模态框 -->
+    <div x-show="modals.edit" class="modal-overlay" @click.self="modals.edit = false">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>✏️ 编辑账号</h3>
+                <button class="modal-close" @click="modals.edit = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>账号名称</label>
+                    <input type="text" x-model="form.name">
+                </div>
+                <div class="form-group">
+                    <label>开始买皮肤日期</label>
+                    <input type="date" x-model="form.startDate">
+                </div>
+                <div class="form-group">
+                    <label>实际利润（元）</label>
+                    <input type="number" x-model="form.profit">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.edit = false">取消</button>
+                <button class="btn-primary" @click="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 自动排期模态框 -->
+    <div x-show="modals.autoSchedule" class="modal-overlay" @click.self="modals.autoSchedule = false">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🤖 自动排期</h3>
+                <button class="modal-close" @click="modals.autoSchedule = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>账号数量</label>
+                    <input type="number" x-model="form.count" placeholder="5" min="1">
+                </div>
+                <div class="form-group">
+                    <label>起始日期</label>
+                    <input type="date" x-model="form.startDate">
+                </div>
+                <div class="form-group" x-show="accounts.length > 0">
+                    <label class="checkbox-label">
+                        <input type="checkbox" x-model="form.replace">
+                        <span>替换现有账号（当前有 <span x-text="accounts.length"></span> 个账号）</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.autoSchedule = false">取消</button>
+                <button class="btn-primary" @click="autoSchedule()">开始排期</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 设置模态框 -->
+    <div x-show="modals.settings" class="modal-overlay" @click.self="modals.settings = false">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>⚙️ 设置</h3>
+                <button class="modal-close" @click="modals.settings = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>默认利润（元）</label>
+                    <input type="number" x-model="settings.defaultProfit">
+                    <small>新添加账号的默认利润</small>
+                </div>
+                <div class="form-group">
+                    <label>买皮肤天数</label>
+                    <input type="number" x-model="settings.buyDays" min="1">
+                </div>
+                <div class="form-group">
+                    <label>卖皮肤天数</label>
+                    <input type="number" x-model="settings.sellDays" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.settings = false">取消</button>
+                <button class="btn-primary" @click="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 确认删除模态框 -->
+    <div x-show="modals.confirmDelete" class="modal-overlay" @click.self="modals.confirmDelete = false">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ 确认删除</h3>
+                <button class="modal-close" @click="modals.confirmDelete = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-icon">⚠️</div>
+                <p>确定要删除这个账号吗？此操作无法撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.confirmDelete = false">取消</button>
+                <button class="btn-danger" @click="deleteAccount()">删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 确认全部删除模态框 -->
+    <div x-show="modals.confirmDeleteAll" class="modal-overlay" @click.self="modals.confirmDeleteAll = false">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ 危险操作</h3>
+                <button class="modal-close" @click="modals.confirmDeleteAll = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-icon danger">🚨</div>
+                <p style="font-weight: 700; color: var(--danger); margin-bottom: 0.5rem;">确定要删除所有账号吗？</p>
+                <p style="color: var(--text-secondary);">当前共有 <strong x-text="accounts.length"></strong> 个账号，删除后无法恢复！</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="modals.confirmDeleteAll = false">取消</button>
+                <button class="btn-danger" @click="deleteAllAccounts()">确认删除全部</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

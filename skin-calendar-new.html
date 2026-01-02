@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>皮肤交易日历</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 移动端顶部导航 -->
+        <nav class="mobile-nav">
+            <div class="nav-brand">📅 皮肤交易</div>
+            <button class="nav-toggle" onclick="toggleMobileMenu()">☰</button>
+        </nav>
+        
+        <!-- 侧边栏（PC端）/ 抽屉菜单（移动端） -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>📅 皮肤交易日历</h1>
+                <p>智能管理 轻松赚钱</p>
+            </div>
+            
+            <div class="sidebar-stats">
+                <div class="stat-item">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalAccounts">0</div>
+                        <div class="stat-label">账号数</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalProfit">¥0</div>
+                        <div class="stat-label">总利润</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="todayTasks">0</div>
+                        <div class="stat-label">今日任务</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-actions">
+                <button class="action-btn primary" onclick="showAddAccountModal()">
+                    ➕ 添加账号
+                </button>
+                <button class="action-btn secondary" onclick="autoSchedule()">
+                    🤖 自动排期
+                </button>
+                <button class="action-btn" onclick="exportToCalendar()">
+                    📧 导出提醒
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 今日任务卡片 -->
+            <section class="today-section">
+                <div class="section-header">
+                    <h2>🎯 今日任务</h2>
+                    <span class="today-date" id="todayDate"></span>
+                </div>
+                <div id="todayTasksList" class="tasks-grid"></div>
+            </section>
+            
+            <!-- 账号列表 -->
+            <section class="accounts-section" id="accountsSection">
+                <div class="section-header">
+                    <h2>📋 我的账号</h2>
+                    <button class="btn-text" onclick="showAddAccountModal()">+ 添加</button>
+                </div>
+                <div id="accountsList" class="accounts-grid"></div>
+            </section>
+            
+            <!-- 日历视图 -->
+            <section class="calendar-section">
+                <div class="section-header">
+                    <h2>📆 日历视图</h2>
+                    <select id="displayDays" onchange="renderCalendar()" class="select-days">
+                        <option value="7">7天</option>
+                        <option value="14">14天</option>
+                        <option value="30" selected>30天</option>
+                    </select>
+                </div>
+                <div id="calendarGrid" class="calendar-grid"></div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
