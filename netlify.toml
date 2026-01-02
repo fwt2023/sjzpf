@@ -1,4 +1,8 @@
+[build]
+  functions = "netlify/functions/"   # 注意：必须是文件夹路径，末尾加 /
+  publish = "."
+
 [[redirects]]
   from = "/*"
-  to = "/skin-calendar-new.html"
-  status = 200
+  to = "/app.html"                   # 这里改成你的主页面文件名！
+  status = 200                       # 如果主页面是 skin-calendar-new.html 就改成那个
