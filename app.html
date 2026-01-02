@@ -364,8 +364,42 @@
             </div>
         </div>
     </div>
-    
+    <script>
+// 订阅推送
+async function subscribePush() {
+  if (!('serviceWorker' in navigator)) return;
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: 'BBjjsOUZfbQBvUS089YWfs8T0zIf-1v--srvGLrg2K_Z5vw0IvMXUjXv6Ce3PrjPZrEM9syv0m-xiJ6eC8QAMF4' // 粘贴第1步生成的 Public Key
+  });
+
+  // 发送订阅到后端
+  await fetch('/.netlify/functions/daily-notification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: sub })
+  });
+
+  alert('每日提醒已开启！明天早上8点会自动通知你～');
+}
+
+// 页面加载后询问是否开启通知
+window.addEventListener('load', () => {
+  if (Notification.permission === 'default') {
+    setTimeout(() => {
+      if (confirm('要开启每日任务自动提醒吗？（浏览器推送，像手机通知一样）')) {
+        Notification.requestPermission().then(perm => {
+          if (perm === 'granted') subscribePush();
+        });
+      }
+    }, 3000);
+  }
+});
+</script>
     <script src="app.js"></script>
 </body>
 </html>
+
 
